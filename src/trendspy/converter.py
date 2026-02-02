@@ -25,22 +25,31 @@ class TrendsDataConverter:
 		
 		Args:
 			token_data: API response token containing keyword/entity information
-			use_entity_names (bool): If True, use entity names from 'bullets' field.
+			use_entity_names (bool): If True, use entity names from 'bullet'/'bullets' field.
 				If False (default), use original keywords from 'comparisonItem'.
 		
 		Returns:
 			list: Column names, potentially with geo/time suffixes if multiple values exist
 		"""
+		items = token_data.get('request', {}).get('comparisonItem', [])
+		
 		if use_entity_names:
-			# Use entity names from bullets field
-			bullets = [item.get('text', '') for item in token_data.get('bullets', [])]
+			# Try to get entity names from 'bullets' field first (used by interest_over_time and multi-keyword interest_by_region)
+			bullets_data = token_data.get('bullets', [])
+			if bullets_data:
+				# Support both 'text' and 'value' field names
+				bullets = [item.get('text') or item.get('value', '') for item in bullets_data]
+			# Then try 'bullet' field (singular, used by single-keyword interest_by_region)
+			elif 'bullet' in token_data:
+				bullets = [token_data.get('bullet', '')]
+			else:
+				# Fallback: use original keywords
+				bullets = [item.get('complexKeywordsRestriction', {}).get('keyword', [{}])[0].get('value','') for item in items]
 		else:
 			# Use original keywords from request
-			items = token_data.get('request', {}).get('comparisonItem', [])
-			bullets = [item.get('complexKeywordsRestriction', {}).get('keyword', [''])[0].get('value','') for item in items]
+			bullets = [item.get('complexKeywordsRestriction', {}).get('keyword', [{}])[0].get('value','') for item in items]
 		
 		# Append geo suffix if multiple different geos exist
-		items = token_data.get('request', {}).get('comparisonItem', [])
 		metadata = [next(iter(item.get('geo', {'':'unk'}).values()), 'unk') for item in items]
 		if len(set(metadata))>1:
 			bullets = [b+' | '+m for b,m in zip(bullets, metadata)]
