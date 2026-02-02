@@ -446,8 +446,7 @@ class Trends:
 			return token, data
 		return TrendsDataConverter.related_queries(data)
 
-
-	def interest_by_region(self, keywords, timeframe="today 12-m", geo='', cat=0, gprop='', resolution=None, inc_low_vol=False, return_raw=False):
+	def interest_by_region(self, keywords, timeframe="today 12-m", geo='', cat=0, gprop='', resolution=None, inc_low_vol=False, return_raw=False, use_entity_names=None):
 		"""
 		Retrieves geographical interest data based on keywords and other parameters.
 
@@ -464,6 +463,10 @@ class Trends:
 				- 'DMA' (Designated Market Areas)
 			inc_low_vol (bool): Include regions with low search volume
 			return_raw (bool): Return unprocessed API response data
+			use_entity_names (bool, optional): Whether to use entity names instead of keywords
+				for DataFrame column names. If None, uses instance-level setting (self.use_enitity_names).
+				When True, column names will be entity names (e.g., "Python (programming language)")
+				instead of original keywords (e.g., "python").
 
 		Returns:
 			pandas.DataFrame or dict: Processed geographic interest data, or raw API response if return_raw=True
@@ -476,7 +479,9 @@ class Trends:
 		if return_raw:
 			return token, data
 		
-		bullets = TrendsDataConverter.token_to_bullets(token)
+		# Determine which setting to use for entity names
+		use_entities = use_entity_names if use_entity_names is not None else self.use_enitity_names
+		bullets = TrendsDataConverter.token_to_bullets(token, use_entity_names=use_entities)
 		return TrendsDataConverter.geo_data(data, bullets)
 	
 	def suggestions(self, keyword, language=None, return_raw=False):
