@@ -19,12 +19,33 @@ class TrendsDataConverter:
 		rss_items: Parses RSS feed items
 	"""
 	@staticmethod
-	def token_to_bullets(token_data):
+	def token_to_bullets(token_data, use_entity_names=False):
+		"""
+		Extract column names from token data.
+		
+		Args:
+			token_data: API response token containing keyword/entity information
+			use_entity_names (bool): If True, use entity names from 'bullets' field.
+				If False (default), use original keywords from 'comparisonItem'.
+		
+		Returns:
+			list: Column names, potentially with geo/time suffixes if multiple values exist
+		"""
+		if use_entity_names:
+			# Use entity names from bullets field
+			bullets = [item.get('text', '') for item in token_data.get('bullets', [])]
+		else:
+			# Use original keywords from request
+			items = token_data.get('request', {}).get('comparisonItem', [])
+			bullets = [item.get('complexKeywordsRestriction', {}).get('keyword', [''])[0].get('value','') for item in items]
+		
+		# Append geo suffix if multiple different geos exist
 		items = token_data.get('request', {}).get('comparisonItem', [])
-		bullets = [item.get('complexKeywordsRestriction', {}).get('keyword', [''])[0].get('value','') for item in items]
 		metadata = [next(iter(item.get('geo', {'':'unk'}).values()), 'unk') for item in items]
 		if len(set(metadata))>1:
 			bullets = [b+' | '+m for b,m in zip(bullets, metadata)]
+		
+		# Append time suffix if multiple different times exist
 		metadata = [item.get('time', '').replace('\\', '') for item in items]
 		if len(set(metadata))>1:
 			bullets = [b+' | '+m for b,m in zip(bullets, metadata)]
